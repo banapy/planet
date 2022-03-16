@@ -5,11 +5,12 @@ use winit::{
 };
 use wgpu::{include_wgsl};
 use wgpu::util::DeviceExt;
-
 mod state;
 mod texture;
 mod camera;
 mod cameraController;
+mod instance;
+mod model;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
