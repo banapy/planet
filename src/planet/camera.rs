@@ -1,5 +1,10 @@
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
+use bevy::render::camera::CameraProjection;
+use bevy::render::primitives::Frustum;
+use bevy::render::view::VisibleEntities;
+use crate::planet::constant::EarthConstant;
+
 
 /// Tags an entity as capable of panning and orbiting.
 #[derive(Component)]
@@ -27,7 +32,8 @@ pub fn camera_system(
     mut ev_scroll: EventReader<MouseWheel>,
     input_mouse: Res<Input<MouseButton>>,
     mut query: Query<(&mut PanOrbitCamera, &mut Transform, &PerspectiveProjection)>,
-) {
+)
+{
     // change input mapping for orbit and panning here
     let orbit_button = MouseButton::Right;
     let pan_button = MouseButton::Middle;
@@ -110,15 +116,42 @@ fn get_primary_window_size(windows: &Res<Windows>) -> Vec2 {
 }
 
 /// Spawn a camera like this
-pub fn setup_bundle(mut commands: Commands) {
-    let translation = Vec3::new(-2.0, 2.5, 5.0);
+pub fn setup_bundle(mut commands: Commands, earth_constant: Res<EarthConstant>, windows: Res<Windows>) {
+    let translation = Vec3::new(earth_constant.x + 1000., earth_constant.y + 1000., earth_constant.z + 1000.);
     let radius = translation.length();
-    commands.spawn_bundle(PerspectiveCameraBundle {
+    let window_size = get_primary_window_size(&windows);
+    let perspective_projection = PerspectiveProjection {
+        far: earth_constant.camera.far,
+        near: earth_constant.camera.near,
+        aspect_ratio: window_size.x / window_size.y,
+        fov: earth_constant.camera.fov,
+    };
+    let view_projection = perspective_projection.get_projection_matrix();
+    let frustum = Frustum::from_view_projection(
+        &view_projection,
+        &Vec3::ZERO,
+        &Vec3::Z,
+        perspective_projection.far(),
+    );
+    let mut perspective_camera_bundle = PerspectiveCameraBundle {
+        perspective_projection,
+        frustum,
         transform: Transform::from_translation(translation)
             .looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
-    }).insert(PanOrbitCamera {
-        radius,
-        ..Default::default()
-    });
+    };
+    commands.spawn_bundle(perspective_camera_bundle)
+        .insert(PanOrbitCamera {
+            radius,
+            ..Default::default()
+        });
+}
+
+pub struct CameraPlugin;
+
+impl Plugin for CameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(setup_bundle);
+        app.add_system(camera_system);
+    }
 }

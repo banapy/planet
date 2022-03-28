@@ -27,6 +27,7 @@ use bevy::{pbr::NotShadowCaster, prelude::*};
 use std::ops::Deref;
 
 mod material;
+
 pub use material::AtmosphereMat;
 use material::{SKY_FRAGMENT_SHADER_HANDLE, SKY_VERTEX_SHADER_HANDLE};
 use naga::ShaderStage;
@@ -97,6 +98,11 @@ impl Plugin for AtmospherePlugin {
         }
 
         app.insert_resource(SkyRadius(self.sky_radius));
+
+        //custom
+        app.insert_resource(AtmosphereMat::default());
+        app.add_startup_system(setup_bundle);
+        app.add_system(daylight_cycle);
     }
 }
 
@@ -136,13 +142,14 @@ fn atmosphere_sky_follow(
         if let Some(camera_3d_entity) = camera_3d.entity {
             if let Ok(camera_transform) = camera_transform_query.get(camera_3d_entity) {
                 if let Some(mut sky_transform) = sky_transform_query.iter_mut().next() {
+                    //what is the purpose?
                     sky_transform.translation = camera_transform.translation;
                 }
             }
         }
     }
 }
-
+//if atmoshhereMat is changed,update atmoshphere in asset collection.
 fn atmosphere_dynamic_sky(
     config: Res<AtmosphereMat>,
     sky_mat_query: Query<&Handle<AtmosphereMat>>,
@@ -155,4 +162,37 @@ fn atmosphere_dynamic_sky(
             }
         }
     }
+}
+
+#[derive(Component)]
+struct Sun;
+
+// atmosphere_dynamic_sky supports fellowing words.
+// We can edit the SkyMaterial resource and it will be updated automatically, as long as AtmospherePlugin.dynamic is true
+fn daylight_cycle(
+    mut sky_mat: ResMut<AtmosphereMat>,
+    mut query: Query<(&mut Transform, &mut DirectionalLight), With<Sun>>,
+    time: Res<Time>,
+) {
+    let mut pos = sky_mat.sun_position;
+    let t = time.time_since_startup().as_millis() as f32 / 1500.0;
+    pos.y = t.sin();
+    pos.z = t.cos();
+    sky_mat.sun_position = pos;
+
+    if let Some((mut light_trans, mut directional)) = query.single_mut().into() {
+        light_trans.rotation = Quat::from_rotation_x(-pos.y.atan2(pos.z));
+        directional.illuminance = t.sin().max(0.0).powf(2.0) * 100000.0;
+    }
+}
+
+pub fn setup_bundle(
+    mut commands: Commands,
+) {
+    // Our Sun
+    commands
+        .spawn_bundle(DirectionalLightBundle {
+            ..Default::default()
+        })
+        .insert(Sun); // Marks the light as Sun
 }

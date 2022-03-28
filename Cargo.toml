@@ -9,3 +9,4 @@ edition = "2021"
 bevy_utils="*"
 bevy = "0.6" # make sure this is the latest version
 naga = { version = "0.8.0", features = ["glsl-in"] } # Needed for naga::ShaderStage; will be fixed in next bevy release
+bevy_prototype_debug_lines = { version = "0.6", features = ["3d"] }

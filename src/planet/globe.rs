@@ -2,6 +2,7 @@ use bevy_utils::Uuid;
 use bevy::prelude::{PerspectiveCameraBundle};
 use bevy::prelude::*;
 use std::default::{Default};
+use crate::planet::constant::EarthConstant;
 
 #[derive(Component)]
 pub struct UniqueId {
@@ -63,7 +64,7 @@ impl GlobeBundle {
         GlobeBundle {
             name: UniqueId::new(config.name),
             transform: Default::default(),
-            rotable:Default::default(),
+            rotable: Default::default(),
         }
     }
 }
@@ -82,14 +83,15 @@ impl Default for GlobeBundleConfig {
 
 pub fn setup_bundle(mut commands: Commands,
                     mut meshes: ResMut<Assets<Mesh>>,
-                    mut materials: ResMut<Assets<StandardMaterial>>, ) {
+                    mut materials: ResMut<Assets<StandardMaterial>>,
+                    earth_constant: Res<EarthConstant>) {
     commands.spawn_bundle(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::UVSphere {
-            radius: 10.0,
+            radius: earth_constant.x,
             ..Default::default()
         })),
         material: materials.add(Color::rgba(1.0, 0.0, 0.0, 0.6).into()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        transform: Transform::default(),
         ..Default::default()
     });
     // light
@@ -99,7 +101,15 @@ pub fn setup_bundle(mut commands: Commands,
             shadows_enabled: true,
             ..Default::default()
         },
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
+        transform: Transform::from_xyz(earth_constant.x + 100.0, earth_constant.y + 100.0, earth_constant.z + 100.0),
         ..Default::default()
     });
+}
+
+pub struct GlobePlugin;
+
+impl Plugin for GlobePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(setup_bundle);
+    }
 }
